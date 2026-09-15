@@ -1,0 +1,10 @@
+{
+  "name": "MDpentagon",
+  "short_name": "MDpentagon",
+  "description": "録音した音の特徴を見える化し、日常での活用候補を提案します。",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f7f5ff",
+  "theme_color": "#7257ff",
+  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

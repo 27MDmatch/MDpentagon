@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#7257ff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>MDpentagon</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="brand">
+      <div class="logo" aria-hidden="true"><img src="icon.svg" alt="" /></div>
+      <div>
+        <p class="eyebrow">MDPENTAGON</p>
+        <h1>音を、今日の味方に。</h1>
+      </div>
+    </header>
+
+    <section id="intro" class="card intro-card">
+      <div class="hero-art" aria-hidden="true">
+        <span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span>
+        <svg viewBox="0 0 220 170" role="img">
+          <polygon points="110,20 195,82 163,150 57,150 25,82" class="web-line" />
+          <polygon points="110,48 166,88 145,130 74,130 52,88" class="web-fill" />
+          <circle cx="110" cy="48" r="5"/><circle cx="166" cy="88" r="5"/><circle cx="145" cy="130" r="5"/><circle cx="74" cy="130" r="5"/><circle cx="52" cy="88" r="5"/>
+        </svg>
+      </div>
+      <h2>気になる音を15秒ほど聴かせてください</h2>
+      <p>その部分の特徴を5つの視点で見える化し、日常での活用候補を提案します。</p>
+      <div class="notice"><span>！</span>別の端末やスピーカーで曲を流すと分析できます</div>
+      <button id="startBtn" class="primary"><span class="mic">●</span> 録音をはじめる</button>
+      <p class="tiny">録音データは端末内だけで分析し、送信・保存しません</p>
+    </section>
+
+    <section id="recording" class="card recording-card hidden" aria-live="polite">
+      <p class="eyebrow purple">NOW LISTENING</p>
+      <h2>音を聴いています</h2>
+      <div class="timer"><span id="seconds">0</span><small> / 20秒</small></div>
+      <div id="bars" class="bars" aria-hidden="true"></div>
+      <p id="recordHint">8秒以上録音すると分析できます</p>
+      <button id="stopBtn" class="stop" disabled><span>■</span> 録音を止めて分析</button>
+    </section>
+
+    <section id="analyzing" class="card hidden" aria-live="polite">
+      <div class="spinner"></div>
+      <h2>音の特徴を分析中…</h2>
+      <p>テンポや音の変化を調べています</p>
+    </section>
+
+    <section id="result" class="hidden">
+      <div class="result-head">
+        <div><p class="eyebrow">YOUR SOUND SHAPE</p><h2>この部分の音のかたち</h2></div>
+        <button id="retryTop" class="icon-btn" aria-label="もう一度録音">↻</button>
+      </div>
+
+      <section class="card chart-card">
+        <canvas id="radar" width="640" height="600" aria-label="音の特徴を示す五角形グラフ"></canvas>
+        <p class="caption">数値は録音した部分の特徴を表します。曲の良し悪しの点数ではありません。</p>
+      </section>
+
+      <section class="card detail-card">
+        <h3>5つの分析結果</h3>
+        <div id="metricList" class="metric-list"></div>
+      </section>
+
+      <section class="card match-card">
+        <p class="eyebrow purple">DAILY MATCH</p>
+        <h3>日常での活用候補</h3>
+        <div id="bestMatch" class="best-match"></div>
+        <div id="matchList" class="match-list"></div>
+        <p class="disclaimer">音響的な特徴から推定した参考情報です。医療的な診断・治療を目的としたものではありません。</p>
+      </section>
+
+      <button id="retryBtn" class="secondary">別の部分を録音する</button>
+    </section>
+
+    <footer>MDpentagon — prototype</footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
