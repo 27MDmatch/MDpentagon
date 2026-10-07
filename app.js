@@ -1,7 +1,20 @@
 const $ = (id) => document.getElementById(id);
-const sections = ['intro', 'recording', 'analyzing', 'result'];
-const show = (id) =>
-  sections.forEach((s) => $(s).classList.toggle('hidden', s !== id));
+
+const sections = [
+  'intro',
+  'recording',
+  'analyzing',
+  'result'
+];
+
+const show = (id) => {
+  sections.forEach((section) => {
+    $(section).classList.toggle(
+      'hidden',
+      section !== id
+    );
+  });
+};
 
 let stream = null;
 let recorder = null;
@@ -16,178 +29,246 @@ let samples = [];
 let spectra = [];
 let startedAt = 0;
 
+/* =========================================
+   5つの音響分析項目
+========================================= */
+
 const metricInfo = [
-  ['テンポ感', '音の速さ・拍の細かさ'],
-  ['リズムの規則性', '一定のリズムが続く度合い'],
-  ['音の強さ', '音量と音の力強さ'],
-  ['変化の大きさ', '静かな部分と強い部分の差'],
-  ['音の複雑さ', '同時に含まれる音の広がり']
+  [
+    'テンポ感',
+    '音の速さ・拍の細かさ'
+  ],
+  [
+    'リズムの規則性',
+    '一定のリズムが続く度合い'
+  ],
+  [
+    '音の強さ',
+    '音量と音の力強さ'
+  ],
+  [
+    '変化の大きさ',
+    '静かな部分と強い部分の差'
+  ],
+  [
+    '音の複雑さ',
+    '同時に含まれる音の広がり'
+  ]
 ];
 
-const bars = Array.from({ length: 30 }, () => {
-  const el = document.createElement('i');
-  el.className = 'bar';
-  $('bars').appendChild(el);
-  return el;
-});
-
-/* =========================
-   音の種類
-========================= */
+/* =========================================
+   AIで読み取ってほしい音
+========================================= */
 
 const soundGroups = [
   {
     name: '音楽',
     icon: '🎵',
-    words: [
+    patterns: [
       'Music',
-      'Background music',
       'Song',
-      'Vocal music',
+      'Background music',
+      'Theme music',
+      'Soundtrack music',
       'Dance music',
+      'Vocal music',
+      'Musical instrument'
+    ]
+  },
+
+  {
+    name: 'ポップス',
+    icon: '🎶',
+    patterns: [
       'Pop music'
     ]
   },
+
   {
     name: '歌声',
     icon: '🎤',
-    words: [
+    patterns: [
       'Singing',
       'Choir',
-      'Humming',
+      'Child singing',
+      'Yodeling',
       'Rapping',
+      'Humming',
       'A capella'
     ]
   },
+
   {
     name: '話し声',
     icon: '🗣️',
-    words: [
+    patterns: [
       'Speech',
       'Conversation',
       'Narration',
-      'Chatter',
-      'Monologue'
+      'Monologue',
+      'Chatter'
     ]
   },
+
+  {
+    name: 'ざわめき・周囲の会話',
+    icon: '👥',
+    patterns: [
+      'Hubbub, speech noise, speech babble',
+      'Crowd',
+      'Environmental noise'
+    ]
+  },
+
   {
     name: '足音',
     icon: '👣',
-    words: [
+    patterns: [
       'Walk, footsteps',
       'Footsteps',
       'Run',
       'Shuffle'
     ]
   },
+
   {
     name: '拍手・手拍子',
     icon: '👏',
-    words: [
+    patterns: [
       'Clapping',
       'Applause',
       'Cheering'
     ]
   },
+
   {
     name: 'ピアノ',
     icon: '🎹',
-    words: [
+    patterns: [
       'Piano',
       'Electric piano'
     ]
   },
+
   {
     name: 'ギター',
     icon: '🎸',
-    words: [
+    patterns: [
       'Guitar',
       'Electric guitar',
-      'Acoustic guitar'
+      'Acoustic guitar',
+      'Steel guitar',
+      'Strum'
     ]
   },
+
   {
     name: 'ベース',
     icon: '🎸',
-    words: [
+    patterns: [
       'Bass guitar'
     ]
   },
+
   {
     name: 'ドラム・打楽器',
     icon: '🥁',
-    words: [
-      'Drum',
+    patterns: [
       'Drum kit',
       'Drum machine',
+      'Drum',
       'Snare drum',
       'Bass drum',
+      'Drum roll',
+      'Rimshot',
       'Cymbal',
       'Hi-hat',
       'Percussion',
-      'Tambourine'
+      'Tambourine',
+      'Maraca'
     ]
   },
+
   {
     name: 'シンセサイザー',
     icon: '🎛️',
-    words: [
+    patterns: [
       'Synthesizer',
-      'Sampler'
+      'Sampler',
+      'Electronic organ',
+      'Organ'
     ]
   },
+
   {
     name: 'バイオリン',
     icon: '🎻',
-    words: [
+    patterns: [
       'Violin, fiddle'
     ]
   },
+
+  {
+    name: 'チェロ',
+    icon: '🎻',
+    patterns: [
+      'Cello'
+    ]
+  },
+
   {
     name: 'フルート',
     icon: '🪈',
-    words: [
+    patterns: [
       'Flute'
     ]
   },
+
   {
     name: 'サックス',
     icon: '🎷',
-    words: [
+    patterns: [
       'Saxophone'
     ]
   },
+
   {
     name: 'トランペット',
     icon: '🎺',
-    words: [
+    patterns: [
       'Trumpet'
     ]
   },
+
   {
     name: '犬',
     icon: '🐶',
-    words: [
+    patterns: [
       'Dog',
       'Bark',
+      'Yip',
       'Howl',
-      'Growling'
+      'Growling',
+      'Bow-wow'
     ]
   },
+
   {
     name: '猫',
     icon: '🐱',
-    words: [
+    patterns: [
       'Cat',
       'Purr',
       'Meow',
-      'Hiss'
+      'Hiss',
+      'Caterwaul'
     ]
   },
+
   {
     name: '鳥',
     icon: '🐦',
-    words: [
+    patterns: [
       'Bird',
       'Bird vocalization',
       'Bird call',
@@ -195,80 +276,170 @@ const soundGroups = [
       'Chirp, tweet',
       'Squawk',
       'Crow',
-      'Owl'
+      'Caw',
+      'Owl',
+      'Hoot'
     ]
   },
+
+  {
+    name: '馬',
+    icon: '🐴',
+    patterns: [
+      'Horse',
+      'Clip-clop',
+      'Neigh, whinny'
+    ]
+  },
+
+  {
+    name: '牛',
+    icon: '🐮',
+    patterns: [
+      'Cattle, bovinae',
+      'Moo',
+      'Cowbell'
+    ]
+  },
+
+  {
+    name: '豚',
+    icon: '🐷',
+    patterns: [
+      'Pig',
+      'Oink'
+    ]
+  },
+
+  {
+    name: 'カエル',
+    icon: '🐸',
+    patterns: [
+      'Frog',
+      'Croak'
+    ]
+  },
+
+  {
+    name: '昆虫',
+    icon: '🦗',
+    patterns: [
+      'Insect',
+      'Cricket',
+      'Mosquito',
+      'Fly, housefly',
+      'Buzz',
+      'Bee, wasp, etc.'
+    ]
+  },
+
   {
     name: '雨',
     icon: '🌧️',
-    words: [
+    patterns: [
       'Rain',
-      'Raindrop'
+      'Raindrop',
+      'Rain on surface'
     ]
   },
+
   {
     name: '風',
     icon: '🌬️',
-    words: [
+    patterns: [
       'Wind',
+      'Wind noise (microphone)',
       'Rustling leaves'
     ]
   },
+
   {
     name: '車',
     icon: '🚗',
-    words: [
+    patterns: [
       'Car',
       'Motor vehicle',
-      'Traffic noise',
+      'Traffic noise, roadway noise',
+      'Car passing by',
       'Vehicle horn'
     ]
   },
+
   {
     name: '電車',
     icon: '🚆',
-    words: [
+    patterns: [
       'Train',
       'Train whistle',
       'Train horn',
       'Rail transport',
-      'Subway'
+      'Subway, metro, underground'
     ]
   },
+
   {
     name: '生活音',
     icon: '🏠',
-    words: [
-      'Dishes',
-      'Cutlery',
+    patterns: [
+      'Dishes, pots, and pans',
+      'Cutlery, silverware',
       'Door',
       'Doorbell',
       'Typing',
       'Computer keyboard',
       'Keys jangling',
       'Vacuum cleaner',
-      'Hair dryer'
+      'Hair dryer',
+      'Blender',
+      'Microwave oven',
+      'Zipper',
+      'Scissors'
     ]
   }
 ];
 
-/* =========================
-   音検出UI
-========================= */
+/* =========================================
+   録音中のバー
+========================================= */
+
+const bars = Array.from(
+  { length: 30 },
+  () => {
+    const element =
+      document.createElement('i');
+
+    element.className = 'bar';
+
+    $('bars').appendChild(element);
+
+    return element;
+  }
+);
+
+/* =========================================
+   音検出結果の見た目
+========================================= */
 
 function injectSoundStyles() {
-  if ($('mdpentagon-sound-styles')) return;
 
-  const style = document.createElement('style');
-  style.id = 'mdpentagon-sound-styles';
+  if ($('mdpentagon-sound-styles')) {
+    return;
+  }
+
+  const style =
+    document.createElement('style');
+
+  style.id =
+    'mdpentagon-sound-styles';
 
   style.textContent = `
     .sound-detection-card {
       margin-top: 18px;
       padding: 24px;
       border-radius: 28px;
-      background: #fff;
-      box-shadow: 0 12px 30px rgba(70,55,130,.07);
+      background: #ffffff;
+      box-shadow:
+        0 12px 30px rgba(70,55,130,.07);
     }
 
     .sound-detection-card h3 {
@@ -301,13 +472,14 @@ function injectSoundStyles() {
 
     .sound-item {
       display: grid;
-      grid-template-columns: 46px 1fr auto;
+      grid-template-columns:
+        46px 1fr auto;
       gap: 12px;
       align-items: center;
       padding: 14px;
       border: 1px solid #ece8f7;
       border-radius: 18px;
-      background: #fff;
+      background: #ffffff;
     }
 
     .sound-item-icon {
@@ -350,12 +522,13 @@ function injectSoundStyles() {
     .sound-item-fill {
       height: 100%;
       border-radius: 999px;
-      background: linear-gradient(
-        90deg,
-        #55d7bd,
-        #7257ff,
-        #ff6fae
-      );
+      background:
+        linear-gradient(
+          90deg,
+          #55d7bd,
+          #7257ff,
+          #ff6fae
+        );
     }
 
     .sound-item-score {
@@ -366,13 +539,25 @@ function injectSoundStyles() {
       font-size: 17px;
     }
 
-    .sound-loading,
-    .sound-empty {
+    .sound-empty,
+    .sound-loading {
       padding: 18px;
       border-radius: 18px;
       background: #faf9fd;
       color: #77718a;
       line-height: 1.7;
+    }
+
+    @media (max-width: 600px) {
+
+      .sound-detection-card {
+        padding: 20px;
+      }
+
+      .sound-item {
+        grid-template-columns:
+          42px 1fr auto;
+      }
     }
   `;
 
@@ -380,173 +565,237 @@ function injectSoundStyles() {
 }
 
 function ensureSoundSection() {
+
   injectSoundStyles();
 
-  let card = $('soundDetectionCard');
+  let card =
+    $('soundDetectionCard');
 
-  if (card) return card;
+  if (card) {
+    return card;
+  }
 
-  card = document.createElement('section');
-  card.id = 'soundDetectionCard';
-  card.className = 'sound-detection-card';
+  card =
+    document.createElement('section');
 
-  const detailCard =
-    document.querySelector('#result .detail-card');
+  card.id =
+    'soundDetectionCard';
 
-  if (detailCard && detailCard.parentNode) {
-    detailCard.parentNode.insertBefore(
-      card,
-      detailCard.nextSibling
+  card.className =
+    'sound-detection-card';
+
+  const chart =
+    document.querySelector(
+      '#result .chart-card'
     );
+
+  if (
+    chart &&
+    chart.parentNode
+  ) {
+
+    chart.parentNode.insertBefore(
+      card,
+      chart.nextSibling
+    );
+
   } else {
+
     $('result').appendChild(card);
   }
 
   return card;
 }
 
-/* =========================
-   MediaPipe AI
-========================= */
+/* =========================================
+   MediaPipe / YAMNet
+========================================= */
 
 let soundClassifier = null;
-let soundClassifierPromise = null;
+let soundModelPromise = null;
 
-const MEDIAPIPE_VERSION = '0.10.20';
+const MEDIAPIPE_VERSION =
+  '0.10.20';
 
-const MP_BUNDLE =
+const MEDIAPIPE_BUNDLE =
   `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@${MEDIAPIPE_VERSION}/audio_bundle.js`;
 
-const MP_WASM =
+const MEDIAPIPE_WASM =
   `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@${MEDIAPIPE_VERSION}/wasm`;
 
-const YAMNET =
+const YAMNET_MODEL =
   'https://storage.googleapis.com/mediapipe-models/audio_classifier/yamnet/float32/1/yamnet.tflite';
 
-function timeoutPromise(ms) {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(null), ms);
-  });
+function wait(ms) {
+
+  return new Promise(
+    (resolve) => {
+      setTimeout(
+        resolve,
+        ms
+      );
+    }
+  );
 }
 
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const existing =
-      document.querySelector(`script[src="${src}"]`);
+function loadMediaPipeScript() {
 
-    if (existing) {
-      if (
-        window.AudioClassifier &&
-        window.FilesetResolver
-      ) {
-        resolve();
+  return new Promise(
+    (resolve, reject) => {
+
+      const oldScript =
+        document.querySelector(
+          `script[src="${MEDIAPIPE_BUNDLE}"]`
+        );
+
+      if (oldScript) {
+
+        if (
+          window.AudioClassifier &&
+          window.FilesetResolver
+        ) {
+
+          resolve();
+          return;
+        }
+
+        oldScript.addEventListener(
+          'load',
+          resolve,
+          { once: true }
+        );
+
+        oldScript.addEventListener(
+          'error',
+          reject,
+          { once: true }
+        );
+
         return;
       }
 
-      existing.addEventListener(
-        'load',
-        resolve,
-        { once: true }
-      );
+      const script =
+        document.createElement(
+          'script'
+        );
 
-      existing.addEventListener(
-        'error',
-        reject,
-        { once: true }
-      );
+      script.src =
+        MEDIAPIPE_BUNDLE;
 
-      return;
+      script.crossOrigin =
+        'anonymous';
+
+      script.onload =
+        resolve;
+
+      script.onerror =
+        () =>
+          reject(
+            new Error(
+              'MediaPipeの読み込みに失敗しました'
+            )
+          );
+
+      document.head.appendChild(
+        script
+      );
     }
-
-    const script =
-      document.createElement('script');
-
-    script.src = src;
-    script.crossOrigin = 'anonymous';
-
-    script.onload = resolve;
-    script.onerror = reject;
-
-    document.head.appendChild(script);
-  });
+  );
 }
 
 async function loadSoundClassifier() {
+
   if (soundClassifier) {
     return soundClassifier;
   }
 
-  if (soundClassifierPromise) {
-    return soundClassifierPromise;
+  if (soundModelPromise) {
+    return soundModelPromise;
   }
 
-  soundClassifierPromise =
+  soundModelPromise =
     (async () => {
 
       try {
 
-        await loadScript(MP_BUNDLE);
+        await loadMediaPipeScript();
 
         if (
           !window.AudioClassifier ||
           !window.FilesetResolver
         ) {
+
           throw new Error(
-            'MediaPipe Audio Classifier unavailable'
+            'Audio Classifierが利用できません'
           );
         }
 
-        const audioFileset =
-          await window.FilesetResolver.forAudioTasks(
-            MP_WASM
-          );
+        const audio =
+          await window.FilesetResolver
+            .forAudioTasks(
+              MEDIAPIPE_WASM
+            );
 
         soundClassifier =
-          await window.AudioClassifier.createFromOptions(
-            audioFileset,
-            {
-              baseOptions: {
-                modelAssetPath: YAMNET,
-                delegate: 'CPU'
-              },
-              maxResults: 40,
-              scoreThreshold: 0.03
-            }
-          );
+          await window.AudioClassifier
+            .createFromOptions(
+              audio,
+              {
+                baseOptions: {
+                  modelAssetPath:
+                    YAMNET_MODEL
+                },
+
+                runningMode:
+                  'AUDIO_CLIPS',
+
+                maxResults:
+                  40,
+
+                scoreThreshold:
+                  0.03
+              }
+            );
 
         return soundClassifier;
 
       } catch (error) {
 
         console.warn(
-          '音イベントAIの初期化に失敗しました',
+          '音イベントAIを準備できませんでした',
           error
         );
 
-        soundClassifier = null;
+        soundClassifier =
+          null;
+
+        soundModelPromise =
+          null;
+
         return null;
       }
+
     })();
 
-  return soundClassifierPromise;
+  return soundModelPromise;
 }
 
-/* =========================
-   音の種類を分析
-   ※ここは絶対にメイン分析を止めない
-========================= */
+/* =========================================
+   音の種類AI
+   重要：
+   ここは結果表示を止めない
+========================================= */
 
-async function detectSounds(decoded) {
+async function detectSounds(
+  decoded
+) {
 
   if (!decoded) {
     return [];
   }
 
   const classifier =
-    await Promise.race([
-      loadSoundClassifier(),
-      timeoutPromise(5000)
-    ]);
+    await loadSoundClassifier();
 
   if (!classifier) {
     return [];
@@ -554,40 +803,50 @@ async function detectSounds(decoded) {
 
   try {
 
-    const source =
+    const waveform =
       decoded.getChannelData(0);
 
-    /*
-      長すぎる録音をそのまま送らず、
-      最大20秒まで。
-    */
     const maxSamples =
       Math.min(
-        source.length,
+        waveform.length,
         decoded.sampleRate * 20
       );
 
-    const audioData =
-      source.slice(
+    const audio =
+      waveform.slice(
         0,
         maxSamples
       );
 
+    /*
+      MediaPipeのclassifyは同期処理。
+      ここでは結果画面が出た「後」に
+      呼び出す。
+    */
     const results =
       classifier.classify(
-        audioData,
+        audio,
         decoded.sampleRate
       );
 
     const raw = [];
 
-    for (const result of results || []) {
+    for (
+      const result of results || []
+    ) {
 
       const categories =
-        result?.classifications?.[0]?.categories ||
-        [];
+        result
+          ?.classifications
+          ?.flatMap(
+            (classification) =>
+              classification.categories ||
+              []
+          ) || [];
 
-      for (const category of categories) {
+      for (
+        const category of categories
+      ) {
 
         const label =
           category.displayName ||
@@ -595,9 +854,13 @@ async function detectSounds(decoded) {
           '';
 
         const score =
-          Number(category.score) || 0;
+          Number(
+            category.score
+          ) || 0;
 
-        if (!label) continue;
+        if (!label) {
+          continue;
+        }
 
         raw.push({
           label,
@@ -606,35 +869,45 @@ async function detectSounds(decoded) {
       }
     }
 
-    const groups = [];
+    const detected = [];
 
-    for (const group of soundGroups) {
+    for (
+      const group of soundGroups
+    ) {
 
       const matched =
-        raw.filter((item) => {
+        raw
+          .filter(
+            (item) => {
 
-          const label =
-            item.label.toLowerCase();
+              const lower =
+                item.label.toLowerCase();
 
-          return group.words.some(
-            (word) =>
-              label.includes(
-                word.toLowerCase()
-              )
+              return group.patterns.some(
+                (pattern) =>
+                  lower.includes(
+                    pattern.toLowerCase()
+                  )
+              );
+            }
+          )
+          .sort(
+            (a, b) =>
+              b.score - a.score
           );
-        });
 
-      if (!matched.length) continue;
-
-      matched.sort(
-        (a, b) =>
-          b.score - a.score
-      );
+      if (!matched.length) {
+        continue;
+      }
 
       const best =
         matched[0];
 
-      const percent =
+      /*
+        20%以上を「検出」とする。
+        あまりにも低い反応は表示しない。
+      */
+      const score =
         Math.round(
           Math.max(
             0,
@@ -645,26 +918,33 @@ async function detectSounds(decoded) {
           )
         );
 
-      /*
-        「ちょっと反応した」だけでは
-        結果に出さない。
-      */
-      if (percent < 20) continue;
+      if (score < 20) {
+        continue;
+      }
 
-      groups.push({
-        name: group.name,
-        icon: group.icon,
-        score: percent,
-        source: best.label
+      detected.push({
+        name:
+          group.name,
+
+        icon:
+          group.icon,
+
+        score,
+
+        source:
+          best.label
       });
     }
 
-    return groups
+    return detected
       .sort(
         (a, b) =>
           b.score - a.score
       )
-      .slice(0, 10);
+      .slice(
+        0,
+        10
+      );
 
   } catch (error) {
 
@@ -677,17 +957,22 @@ async function detectSounds(decoded) {
   }
 }
 
-/* =========================
+/* =========================================
    録音品質
-========================= */
+========================================= */
 
-function calculateRecordingQuality(decoded) {
+function calculateRecordingQuality(
+  decoded
+) {
 
   if (!decoded) {
 
     return {
-      label: '確認できません',
-      message: '録音データを読み込めませんでした。'
+      label:
+        '確認できません',
+
+      message:
+        '録音データを読み込めませんでした。'
     };
   }
 
@@ -712,31 +997,50 @@ function calculateRecordingQuality(decoded) {
     i += step
   ) {
 
-    const v = data[i];
+    const value =
+      data[i];
 
-    sum += v * v;
+    sum +=
+      value * value;
+
     count++;
 
-    if (Math.abs(v) > 0.98) {
+    if (
+      Math.abs(value) >
+      0.98
+    ) {
+
       clipped++;
     }
   }
 
   const rms =
     Math.sqrt(
-      sum / Math.max(1, count)
+      sum /
+      Math.max(
+        1,
+        count
+      )
     );
 
   const clipRatio =
     clipped /
-    Math.max(1, count);
+    Math.max(
+      1,
+      count
+    );
 
-  if (decoded.duration < 8) {
+  if (
+    decoded.duration < 8
+  ) {
 
     return {
-      label: '短め',
+      label:
+        '短め',
+
       message:
         '録音時間が短いため、判定が不安定になる可能性があります。',
+
       duration:
         Number(
           decoded.duration.toFixed(1)
@@ -744,12 +1048,17 @@ function calculateRecordingQuality(decoded) {
     };
   }
 
-  if (clipRatio > 0.08) {
+  if (
+    clipRatio > 0.08
+  ) {
 
     return {
-      label: '音割れに注意',
+      label:
+        '音割れに注意',
+
       message:
-        '音が大きすぎる可能性があります。少し音量を下げて録音すると分析しやすくなります。',
+        '音が大きすぎて一部が音割れしている可能性があります。',
+
       duration:
         Number(
           decoded.duration.toFixed(1)
@@ -757,12 +1066,17 @@ function calculateRecordingQuality(decoded) {
     };
   }
 
-  if (rms < 0.002) {
+  if (
+    rms < 0.002
+  ) {
 
     return {
-      label: '音が小さめ',
+      label:
+        '音が小さめ',
+
       message:
-        '録音された音が小さいため、別の端末やスピーカーで少し音量を上げると分析しやすくなります。',
+        '録音された音が小さいため、少し音量を上げて録音すると分析しやすくなります。',
+
       duration:
         Number(
           decoded.duration.toFixed(1)
@@ -771,14 +1085,68 @@ function calculateRecordingQuality(decoded) {
   }
 
   return {
-    label: '良好',
+    label:
+      '良好',
+
     message:
       '録音された音量と長さは分析に十分です。',
+
     duration:
       Number(
         decoded.duration.toFixed(1)
       )
   };
+}
+
+/* =========================================
+   音検出UI
+========================================= */
+
+function showSoundLoading(
+  quality
+) {
+
+  const card =
+    ensureSoundSection();
+
+  const qualityHtml =
+    quality
+      ? `
+        <div class="sound-quality">
+          <strong>
+            録音品質：
+            ${quality.label}
+          </strong>
+
+          <br>
+
+          ${quality.message}
+
+          ${
+            quality.duration
+              ? `（${quality.duration}秒を分析）`
+              : ''
+          }
+        </div>
+      `
+      : '';
+
+  card.innerHTML = `
+    <h3>
+      この録音で検出された音
+    </h3>
+
+    <p class="sound-detection-sub">
+      録音された音をAIが分析しています。
+      五角形の分析結果はすでに表示されています。
+    </p>
+
+    ${qualityHtml}
+
+    <div class="sound-loading">
+      音の種類を確認しています…
+    </div>
+  `;
 }
 
 function renderSoundDetections(
@@ -789,27 +1157,36 @@ function renderSoundDetections(
   const card =
     ensureSoundSection();
 
-  const qualityHtml = quality
-    ? `
-      <div class="sound-quality">
-        <strong>
-          録音品質：${quality.label}
-        </strong>
-        <br>
-        ${quality.message}
-        ${
-          quality.duration
-            ? `（${quality.duration}秒を分析）`
-            : ''
-        }
-      </div>
-    `
-    : '';
+  const qualityHtml =
+    quality
+      ? `
+        <div class="sound-quality">
+          <strong>
+            録音品質：
+            ${quality.label}
+          </strong>
 
-  if (!sounds.length) {
+          <br>
+
+          ${quality.message}
+
+          ${
+            quality.duration
+              ? `（${quality.duration}秒を分析）`
+              : ''
+          }
+        </div>
+      `
+      : '';
+
+  if (
+    !sounds.length
+  ) {
 
     card.innerHTML = `
-      <h3>この録音で検出された音</h3>
+      <h3>
+        この録音で検出された音
+      </h3>
 
       <p class="sound-detection-sub">
         録音された音をAIが分析し、
@@ -820,7 +1197,7 @@ function renderSoundDetections(
 
       <div class="sound-empty">
         今回は音の種類を十分に検出できませんでした。
-        5つの音響分析結果は通常どおり表示されています。
+        五角形の分析結果は通常どおり利用できます。
       </div>
     `;
 
@@ -830,34 +1207,37 @@ function renderSoundDetections(
   const list =
     sounds
       .map(
-        (item) => `
+        (sound) => `
           <div class="sound-item">
 
             <div class="sound-item-icon">
-              ${item.icon}
+              ${sound.icon}
             </div>
 
             <div class="sound-item-main">
 
               <div class="sound-item-title">
-                ${item.name}
+                ${sound.name}
               </div>
 
               <div class="sound-item-source">
-                AIが検出した音：${item.source}
+                AIが検出した音：
+                ${sound.source}
               </div>
 
               <div class="sound-item-bar">
                 <div
                   class="sound-item-fill"
-                  style="width:${item.score}%"
+                  style="
+                    width:${sound.score}%
+                  "
                 ></div>
               </div>
 
             </div>
 
             <div class="sound-item-score">
-              ${item.score}%
+              ${sound.score}%
             </div>
 
           </div>
@@ -866,11 +1246,13 @@ function renderSoundDetections(
       .join('');
 
   card.innerHTML = `
-    <h3>この録音で検出された音</h3>
+    <h3>
+      この録音で検出された音
+    </h3>
 
     <p class="sound-detection-sub">
-      録音された音の中から、AIが検出したものを表示しています。
-      複数の音が重なっている場合もあります。
+      録音された音の中から、
+      AIが検出したものを表示しています。
     </p>
 
     ${qualityHtml}
@@ -881,9 +1263,9 @@ function renderSoundDetections(
   `;
 }
 
-/* =========================
-   録音
-========================= */
+/* =========================================
+   ボタン
+========================================= */
 
 $('startBtn').addEventListener(
   'click',
@@ -905,18 +1287,28 @@ $('retryTop').addEventListener(
   reset
 );
 
+/* =========================================
+   録音開始
+========================================= */
+
 async function startRecording() {
 
   try {
 
     stream =
-      await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false
-        }
-      });
+      await navigator.mediaDevices
+        .getUserMedia({
+          audio: {
+            echoCancellation:
+              false,
+
+            noiseSuppression:
+              false,
+
+            autoGainControl:
+              false
+          }
+        });
 
     audioCtx =
       new (
@@ -927,43 +1319,73 @@ async function startRecording() {
     await audioCtx.resume();
 
     source =
-      audioCtx.createMediaStreamSource(
-        stream
-      );
+      audioCtx
+        .createMediaStreamSource(
+          stream
+        );
 
     analyser =
       audioCtx.createAnalyser();
 
-    analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.25;
+    analyser.fftSize =
+      2048;
 
-    source.connect(analyser);
+    analyser.smoothingTimeConstant =
+      0.25;
+
+    source.connect(
+      analyser
+    );
 
     recorder =
-      new MediaRecorder(stream);
+      new MediaRecorder(
+        stream
+      );
 
     chunks = [];
     samples = [];
     spectra = [];
 
     recorder.ondataavailable =
-      (e) => {
-        if (e.data.size) {
-          chunks.push(e.data);
+      (event) => {
+
+        if (
+          event.data.size
+        ) {
+
+          chunks.push(
+            event.data
+          );
         }
       };
 
-    recorder.onstop = analyze;
+    recorder.onstop =
+      analyze;
 
     recorder.start(250);
 
     startedAt =
       performance.now();
 
-    $('seconds').textContent = '0';
-    $('stopBtn').disabled = true;
+    $('seconds').textContent =
+      '0';
 
-    show('recording');
+    $('stopBtn').disabled =
+      true;
+
+    $('recordHint').textContent =
+      '8秒以上録音すると分析できます';
+
+    show(
+      'recording'
+    );
+
+    /*
+      録音中にAIを準備しておく。
+      ただし、ここで待たない。
+    */
+    loadSoundClassifier()
+      .catch(() => {});
 
     timerId =
       setInterval(
@@ -973,55 +1395,75 @@ async function startRecording() {
 
     visualize();
 
-    /*
-      AIはここで先読みする。
-      ただし待たない。
-    */
-    loadSoundClassifier().catch(() => {});
-
   } catch (error) {
+
+    console.warn(
+      error
+    );
 
     alert(
       'マイクを使用できませんでした。ブラウザの設定でマイクを許可してください。'
     );
 
     cleanup();
-    show('intro');
+
+    show(
+      'intro'
+    );
   }
 }
 
+/* =========================================
+   タイマー
+========================================= */
+
 function updateTimer() {
 
-  const sec =
-    (performance.now() - startedAt) /
-    1000;
+  const seconds =
+    (
+      performance.now() -
+      startedAt
+    ) / 1000;
 
   $('seconds').textContent =
-    Math.floor(sec);
+    Math.floor(
+      seconds
+    );
 
   $('stopBtn').disabled =
-    sec < 8;
+    seconds < 8;
 
   $('recordHint').textContent =
-    sec < 8
-      ? `あと${Math.ceil(8 - sec)}秒で分析できます`
+    seconds < 8
+      ? `あと${Math.ceil(
+          8 - seconds
+        )}秒で分析できます`
       : '好きなタイミングで分析できます';
 
-  if (sec >= 20) {
+  if (
+    seconds >= 20
+  ) {
+
     stopRecording();
   }
 }
 
+/* =========================================
+   録音中の可視化
+========================================= */
+
 function visualize() {
 
-  if (!analyser) return;
+  if (!analyser) {
+    return;
+  }
 
   const time =
     new Uint8Array(
       analyser.fftSize
     );
 
-  const freq =
+  const frequency =
     new Uint8Array(
       analyser.frequencyBinCount
     );
@@ -1031,28 +1473,36 @@ function visualize() {
   );
 
   analyser.getByteFrequencyData(
-    freq
+    frequency
   );
 
   let sum = 0;
 
-  for (const v of time) {
+  for (
+    const value of time
+  ) {
 
-    const x =
-      (v - 128) / 128;
+    const normalized =
+      (
+        value - 128
+      ) / 128;
 
-    sum += x * x;
+    sum +=
+      normalized *
+      normalized;
   }
 
   const rms =
     Math.sqrt(
-      sum / time.length
+      sum /
+      time.length
     );
 
   samples.push({
-    t:
+    time:
       performance.now() -
       startedAt,
+
     rms
   });
 
@@ -1062,17 +1512,24 @@ function visualize() {
 
   for (
     let i = 1;
-    i < freq.length;
+    i < frequency.length;
     i++
   ) {
 
-    const p =
-      freq[i] / 255;
+    const power =
+      frequency[i] /
+      255;
 
-    weighted += i * p;
-    total += p;
+    weighted +=
+      i * power;
 
-    if (p > 0.12) {
+    total +=
+      power;
+
+    if (
+      power > 0.12
+    ) {
+
       active++;
     }
   }
@@ -1082,20 +1539,21 @@ function visualize() {
       total
         ? weighted /
           total /
-          freq.length
+          frequency.length
         : 0,
+
     spread:
       active /
-      freq.length
+      frequency.length
   });
 
   bars.forEach(
-    (bar, i) => {
+    (bar, index) => {
 
-      const index =
+      const position =
         Math.floor(
-          i *
-          freq.length /
+          index *
+          frequency.length /
           bars.length
         );
 
@@ -1104,7 +1562,9 @@ function visualize() {
           7,
           Math.min(
             88,
-            7 + freq[index] * 0.32
+            7 +
+              frequency[position] *
+                0.32
           )
         )}px`;
     }
@@ -1116,39 +1576,53 @@ function visualize() {
     );
 }
 
+/* =========================================
+   録音停止
+========================================= */
+
 function stopRecording() {
 
   if (
     !recorder ||
-    recorder.state === 'inactive'
+    recorder.state ===
+      'inactive'
   ) {
+
     return;
   }
 
-  clearInterval(timerId);
+  clearInterval(
+    timerId
+  );
+
   cancelAnimationFrame(
     animationId
   );
 
   recorder.stop();
 
-  show('analyzing');
+  show(
+    'analyzing'
+  );
 }
 
-/* =========================
-   分析
-========================= */
+/* =========================================
+   分析開始
+========================================= */
 
 async function analyze() {
 
-  const mime =
+  const mimeType =
     recorder?.mimeType ||
     'audio/webm';
 
   const blob =
     new Blob(
       chunks,
-      { type: mime }
+      {
+        type:
+          mimeType
+      }
     );
 
   let decoded = null;
@@ -1162,7 +1636,13 @@ async function analyze() {
 
   } catch (error) {
 
-    decoded = null;
+    console.warn(
+      '音声のデコードに失敗しました',
+      error
+    );
+
+    decoded =
+      null;
   }
 
   const metrics =
@@ -1176,9 +1656,8 @@ async function analyze() {
     );
 
   /*
-    ★ここが今回の重要ポイント
-    音イベントAIを待たずに
-    まず結果画面を出す。
+    ★ここではAIの結果を待たない。
+    五角形結果を即表示する。
   */
   renderResults({
     ...metrics,
@@ -1186,27 +1665,74 @@ async function analyze() {
   });
 
   /*
-    音の種類は裏側で分析。
-    最大6秒待つ。
-    失敗しても五角形結果には影響なし。
+    ★音の種類AIは後から処理する。
+    AIが止まっても結果画面は止まらない。
   */
-  Promise.race([
-    detectSounds(decoded),
-    timeoutPromise(6000)
-  ]).then(
-    (sounds) => {
+  showSoundLoading(
+    quality
+  );
 
-      if (!Array.isArray(sounds)) {
-        sounds = [];
+  /*
+    モデルがすでに準備できている、
+    または短時間で準備できた場合だけ実行。
+  */
+  setTimeout(
+    async () => {
+
+      try {
+
+        const classifier =
+          await Promise.race([
+            loadSoundClassifier(),
+            wait(5000)
+          ]);
+
+        if (
+          !classifier
+        ) {
+
+          renderSoundDetections(
+            [],
+            quality
+          );
+
+          return;
+        }
+
+        /*
+          classify() 自体は同期処理なので、
+          結果画面を描画した後に実行する。
+        */
+        const sounds =
+          await detectSounds(
+            decoded
+          );
+
+        renderSoundDetections(
+          sounds,
+          quality
+        );
+
+      } catch (error) {
+
+        console.warn(
+          '音の種類分析に失敗しました',
+          error
+        );
+
+        renderSoundDetections(
+          [],
+          quality
+        );
       }
-
-      renderSoundDetections(
-        sounds,
-        quality
-      );
-    }
+    },
+    100
   );
 }
+
+/* =========================================
+   基本計算
+========================================= */
 
 function clamp(
   value,
@@ -1223,160 +1749,228 @@ function clamp(
   );
 }
 
-function mean(array) {
+function mean(
+  array
+) {
 
   return array.length
     ? array.reduce(
-        (a, b) => a + b,
+        (
+          total,
+          value
+        ) =>
+          total + value,
         0
-      ) / array.length
+      ) /
+      array.length
     : 0;
 }
 
-function std(array) {
+function standardDeviation(
+  array
+) {
 
-  const m =
+  const average =
     mean(array);
 
   return Math.sqrt(
     mean(
       array.map(
-        (x) =>
-          (x - m) ** 2
+        (value) =>
+          (
+            value -
+            average
+          ) ** 2
       )
     )
   );
 }
 
-function calculateMetrics(decoded) {
+/* =========================================
+   5項目の分析
+========================================= */
 
-  let env =
+function calculateMetrics(
+  decoded
+) {
+
+  let envelope =
     samples.map(
-      (x) => x.rms
+      (sample) =>
+        sample.rms
     );
 
-  if (decoded) {
+  if (
+    decoded
+  ) {
 
     const data =
-      decoded.getChannelData(0);
-
-    const rate =
-      decoded.sampleRate;
-
-    const frame =
-      Math.floor(
-        rate * 0.05
+      decoded.getChannelData(
+        0
       );
 
-    env = [];
+    const sampleRate =
+      decoded.sampleRate;
+
+    const frameSize =
+      Math.max(
+        1,
+        Math.floor(
+          sampleRate *
+          0.05
+        )
+      );
+
+    envelope = [];
 
     for (
       let i = 0;
-      i + frame < data.length;
-      i += frame
+      i + frameSize <
+        data.length;
+      i += frameSize
     ) {
 
       let power = 0;
-
       let count = 0;
 
       for (
         let j = 0;
-        j < frame;
+        j < frameSize;
         j += 4
       ) {
 
-        const v =
+        const value =
           data[i + j];
 
         power +=
-          v * v;
+          value *
+          value;
 
         count++;
       }
 
-      env.push(
+      envelope.push(
         Math.sqrt(
           power /
-          Math.max(1, count)
+          Math.max(
+            1,
+            count
+          )
         )
       );
     }
   }
 
-  const avg =
-    mean(env);
+  if (
+    envelope.length === 0
+  ) {
+
+    envelope = [0];
+  }
+
+  const average =
+    mean(
+      envelope
+    );
 
   const variability =
-    avg
-      ? std(env) / avg
+    average
+      ? standardDeviation(
+          envelope
+        ) /
+        average
       : 0;
 
   const sorted =
-    [...env].sort(
-      (a, b) => a - b
+    [...envelope].sort(
+      (a, b) =>
+        a - b
     );
 
   const p10 =
     sorted[
       Math.floor(
-        sorted.length * 0.1
+        sorted.length *
+        0.1
       )
     ] || 0;
 
   const p90 =
     sorted[
       Math.floor(
-        sorted.length * 0.9
+        sorted.length *
+        0.9
       )
     ] || 0;
 
+  /*
+    音の強さ
+  */
   const power =
     clamp(
       (
         20 *
         Math.log10(
-          avg + 1e-6
+          average +
+            0.000001
         ) +
         55
       ) *
       2.2
     );
 
+  /*
+    変化の大きさ
+  */
   const change =
     clamp(
       (
         (p90 - p10) /
-        (avg + 0.0001)
+        (
+          average +
+          0.0001
+        )
       ) *
       42
+    );
+
+  /*
+    複雑さ
+  */
+  const averageSpread =
+    mean(
+      spectra.map(
+        (item) =>
+          item.spread
+      )
+    );
+
+  const averageCentroid =
+    mean(
+      spectra.map(
+        (item) =>
+          item.centroid
+      )
     );
 
   const complexity =
     clamp(
       (
-        mean(
-          spectra.map(
-            (x) =>
-              x.spread
-          )
-        ) -
+        averageSpread -
         0.03
       ) *
       260
       +
-      mean(
-        spectra.map(
-          (x) =>
-            x.centroid
-        )
-      ) *
+      averageCentroid *
       38
     );
 
+  /*
+    テンポ
+  */
   const tempoData =
     estimateTempo(
-      env,
+      envelope,
       20
     );
 
@@ -1389,23 +1983,31 @@ function calculateMetrics(decoded) {
       1.15
     );
 
+  /*
+    リズムの規則性
+  */
   const regularity =
     clamp(
       tempoData.confidence *
-        115 -
-        variability *
-        12 +
-        16
+        115
+      -
+      variability *
+        12
+      +
+      16
     );
 
   return {
+
     values: [
       tempo,
       regularity,
       power,
       change,
       complexity
-    ].map(Math.round),
+    ].map(
+      Math.round
+    ),
 
     bpm:
       Math.round(
@@ -1414,13 +2016,17 @@ function calculateMetrics(decoded) {
   };
 }
 
+/* =========================================
+   テンポ推定
+========================================= */
+
 function estimateTempo(
-  env,
-  fps
+  envelope,
+  framesPerSecond
 ) {
 
   if (
-    env.length < 80
+    envelope.length < 80
   ) {
 
     return {
@@ -1430,27 +2036,32 @@ function estimateTempo(
   }
 
   const smooth =
-    env.map(
-      (_, i) =>
+    envelope.map(
+      (_, index) =>
         mean(
-          env.slice(
+          envelope.slice(
             Math.max(
               0,
-              i - 1
+              index - 1
             ),
-            i + 2
+            index + 2
           )
         )
     );
 
   const onset =
     smooth.map(
-      (value, i) =>
+      (
+        value,
+        index
+      ) =>
         Math.max(
           0,
           value -
             (
-              smooth[i - 1] ||
+              smooth[
+                index - 1
+              ] ||
               value
             )
         )
@@ -1458,21 +2069,30 @@ function estimateTempo(
 
   const minLag =
     Math.floor(
-      fps * 60 / 180
+      framesPerSecond *
+      60 /
+      180
     );
 
   const maxLag =
     Math.ceil(
-      fps * 60 / 55
+      framesPerSecond *
+      60 /
+      55
     );
 
   let bestLag =
     Math.round(
-      fps * 60 / 100
+      framesPerSecond *
+      60 /
+      100
     );
 
-  let best = -1;
-  let total = 0;
+  let best =
+    -1;
+
+  let total =
+    0;
 
   for (
     let lag = minLag;
@@ -1480,17 +2100,21 @@ function estimateTempo(
     lag++
   ) {
 
-    let correlation = 0;
+    let correlation =
+      0;
 
     for (
-      let i = lag;
-      i < onset.length;
-      i++
+      let index = lag;
+      index <
+        onset.length;
+      index++
     ) {
 
       correlation +=
-        onset[i] *
-        onset[i - lag];
+        onset[index] *
+        onset[
+          index - lag
+        ];
     }
 
     total +=
@@ -1509,36 +2133,45 @@ function estimateTempo(
     }
   }
 
+  const confidence =
+    total > 0
+      ? (
+          best /
+          (
+            total /
+              (
+                maxLag -
+                minLag +
+                1
+              ) +
+            0.000000001
+          )
+        ) /
+        5
+      : 0.3;
+
   return {
+
     bpm:
       clamp(
-        60 * fps / bestLag,
+        60 *
+        framesPerSecond /
+        bestLag,
         55,
         180
       ),
 
-    confidence:
-      total
-        ? best /
-          (
-            total /
-            (
-              maxLag -
-              minLag +
-              1
-            ) +
-            1e-9
-          ) /
-          5
-        : 0.3
+    confidence
   };
 }
 
-/* =========================
+/* =========================================
    結果表示
-========================= */
+========================================= */
 
-function renderResults(data) {
+function renderResults(
+  data
+) {
 
   cleanup();
 
@@ -1549,13 +2182,20 @@ function renderResults(data) {
   $('metricList').innerHTML =
     data.values
       .map(
-        (value, i) => `
+        (
+          value,
+          index
+        ) => `
           <div class="metric">
 
             <div class="metric-top">
 
               <span>
-                ${metricInfo[i][0]}
+                ${
+                  metricInfo[
+                    index
+                  ][0]
+                }
               </span>
 
               <strong>
@@ -1568,17 +2208,23 @@ function renderResults(data) {
 
               <div
                 class="fill"
-                style="width:${value}%"
+                style="
+                  width:${value}%
+                "
               ></div>
 
             </div>
 
             <small>
+
               ${
-                i === 0
+                index === 0
                   ? `推定テンポ：約${data.bpm} BPM`
-                  : metricInfo[i][1]
+                  : metricInfo[
+                      index
+                    ][1]
               }
+
             </small>
 
           </div>
@@ -1594,16 +2240,17 @@ function renderResults(data) {
   const best =
     matches[0];
 
-  $('bestMatch').innerHTML = `
-    <p class="match-title">
-      ${best.icon}
-      ${best.name}の候補
-    </p>
+  $('bestMatch').innerHTML =
+    `
+      <p class="match-title">
+        ${best.icon}
+        ${best.name}の候補
+      </p>
 
-    <p>
-      ${best.reason}
-    </p>
-  `;
+      <p>
+        ${best.reason}
+      </p>
+    `;
 
   $('matchList').innerHTML =
     matches
@@ -1619,7 +2266,9 @@ function renderResults(data) {
 
               <div
                 class="fill"
-                style="width:${match.score}%"
+                style="
+                  width:${match.score}%
+                "
               ></div>
 
             </div>
@@ -1633,22 +2282,9 @@ function renderResults(data) {
       )
       .join('');
 
-  ensureSoundSection();
-
-  $('soundDetectionCard').innerHTML = `
-    <h3>この録音で検出された音</h3>
-
-    <p class="sound-detection-sub">
-      録音された音をAIが分析しています…
-    </p>
-
-    <div class="sound-loading">
-      五角形の分析結果は先に表示しています。
-      音の種類の分析が完了すると、ここに検出された音が表示されます。
-    </div>
-  `;
-
-  show('result');
+  show(
+    'result'
+  );
 
   window.scrollTo({
     top: 0,
@@ -1656,28 +2292,31 @@ function renderResults(data) {
   });
 }
 
-/* =========================
+/* =========================================
    活用候補
-========================= */
+========================================= */
 
-function scoreMatches(values) {
+function scoreMatches(
+  values
+) {
 
   const [
     tempo,
-    regular,
+    regularity,
     power,
     change,
-    complex
+    complexity
   ] = values;
 
   const proximity =
-    (value, target) =>
-      Math.max(
-        0,
-        100 -
-          Math.abs(
-            value - target
-          )
+    (
+      value,
+      target
+    ) =>
+      100 -
+      Math.abs(
+        value -
+        target
       );
 
   const list = [
@@ -1694,7 +2333,7 @@ function scoreMatches(values) {
           )
         +
         0.30 *
-          regular
+          regularity
         +
         0.20 *
           proximity(
@@ -1703,10 +2342,16 @@ function scoreMatches(values) {
           )
         +
         0.18 *
-          (100 - change)
+          (
+            100 -
+            change
+          )
         +
         0.12 *
-          (100 - complex),
+          (
+            100 -
+            complexity
+          ),
 
       reason:
         '一定の流れと控えめな変化は、作業中の背景音候補になります。歌詞が気になる場合は器楽曲も試してみましょう。'
@@ -1718,19 +2363,31 @@ function scoreMatches(values) {
 
       score:
         0.28 *
-          (100 - tempo)
+          (
+            100 -
+            tempo
+          )
         +
         0.12 *
-          regular
+          regularity
         +
         0.25 *
-          (100 - power)
+          (
+            100 -
+            power
+          )
         +
         0.22 *
-          (100 - change)
+          (
+            100 -
+            change
+          )
         +
         0.13 *
-          (100 - complex),
+          (
+            100 -
+            complexity
+          ),
 
       reason:
         '穏やかな速さと音量、変化の少なさは、休憩時間に気持ちを落ち着けたい時の候補になります。'
@@ -1745,7 +2402,7 @@ function scoreMatches(values) {
           tempo
         +
         0.12 *
-          regular
+          regularity
         +
         0.26 *
           power
@@ -1754,7 +2411,7 @@ function scoreMatches(values) {
           change
         +
         0.12 *
-          complex,
+          complexity,
 
       reason:
         'テンポ感や音の力、展開の変化は、活動前や気分を切り替えたい時の候補になります。'
@@ -1782,27 +2439,35 @@ function scoreMatches(values) {
     );
 }
 
-/* =========================
-   五角形
-========================= */
+/* =========================================
+   レーダーチャート
+========================================= */
 
-function drawRadar(values) {
+function drawRadar(
+  values
+) {
 
   const canvas =
     $('radar');
 
-  const ctx =
-    canvas.getContext('2d');
+  const context =
+    canvas.getContext(
+      '2d'
+    );
 
-  const cx =
-    canvas.width / 2;
+  const centerX =
+    canvas.width /
+    2;
 
-  const cy =
-    canvas.height / 2 + 10;
+  const centerY =
+    canvas.height /
+    2 +
+    10;
 
-  const radius = 205;
+  const radius =
+    205;
 
-  ctx.clearRect(
+  context.clearRect(
     0,
     0,
     canvas.width,
@@ -1810,7 +2475,10 @@ function drawRadar(values) {
   );
 
   const point =
-    (index, r) => {
+    (
+      index,
+      distance
+    ) => {
 
       const angle =
         -Math.PI / 2 +
@@ -1820,15 +2488,24 @@ function drawRadar(values) {
           5;
 
       return [
-        cx +
-          Math.cos(angle) *
-          r,
 
-        cy +
-          Math.sin(angle) *
-          r
+        centerX +
+          Math.cos(
+            angle
+          ) *
+          distance,
+
+        centerY +
+          Math.sin(
+            angle
+          ) *
+          distance
       ];
     };
+
+  /*
+    外側の五角形グリッド
+  */
 
   for (
     let level = 1;
@@ -1836,7 +2513,7 @@ function drawRadar(values) {
     level++
   ) {
 
-    ctx.beginPath();
+    context.beginPath();
 
     for (
       let i = 0;
@@ -1852,26 +2529,36 @@ function drawRadar(values) {
             4
         );
 
-      if (i === 0) {
-        ctx.moveTo(
+      if (
+        i === 0
+      ) {
+
+        context.moveTo(
           ...p
         );
+
       } else {
-        ctx.lineTo(
+
+        context.lineTo(
           ...p
         );
       }
     }
 
-    ctx.closePath();
+    context.closePath();
 
-    ctx.strokeStyle =
+    context.strokeStyle =
       '#e5e0f7';
 
-    ctx.lineWidth = 2;
+    context.lineWidth =
+      2;
 
-    ctx.stroke();
+    context.stroke();
   }
+
+  /*
+    中心から各軸へ
+  */
 
   for (
     let i = 0;
@@ -1885,29 +2572,33 @@ function drawRadar(values) {
         radius
       );
 
-    ctx.beginPath();
+    context.beginPath();
 
-    ctx.moveTo(
-      cx,
-      cy
+    context.moveTo(
+      centerX,
+      centerY
     );
 
-    ctx.lineTo(
+    context.lineTo(
       ...p
     );
 
-    ctx.strokeStyle =
+    context.strokeStyle =
       '#ebe7f7';
 
-    ctx.stroke();
+    context.stroke();
   }
 
+  /*
+    分析結果の五角形
+  */
+
   const gradient =
-    ctx.createLinearGradient(
-      cx - radius,
-      cy - radius,
-      cx + radius,
-      cy + radius
+    context.createLinearGradient(
+      centerX - radius,
+      centerY - radius,
+      centerX + radius,
+      centerY + radius
     );
 
   gradient.addColorStop(
@@ -1925,82 +2616,104 @@ function drawRadar(values) {
     '#ff6fae99'
   );
 
-  ctx.beginPath();
+  context.beginPath();
 
   values.forEach(
-    (value, i) => {
+    (
+      value,
+      index
+    ) => {
 
       const p =
         point(
-          i,
+          index,
           radius *
             value /
             100
         );
 
-      if (i === 0) {
-        ctx.moveTo(
+      if (
+        index === 0
+      ) {
+
+        context.moveTo(
           ...p
         );
+
       } else {
-        ctx.lineTo(
+
+        context.lineTo(
           ...p
         );
       }
     }
   );
 
-  ctx.closePath();
+  context.closePath();
 
-  ctx.fillStyle =
+  context.fillStyle =
     gradient;
 
-  ctx.fill();
+  context.fill();
 
-  ctx.strokeStyle =
+  context.strokeStyle =
     '#7257ff';
 
-  ctx.lineWidth = 6;
-  ctx.lineJoin = 'round';
+  context.lineWidth =
+    6;
 
-  ctx.stroke();
+  context.lineJoin =
+    'round';
+
+  context.stroke();
+
+  /*
+    5つの点
+  */
 
   values.forEach(
-    (value, i) => {
+    (
+      value,
+      index
+    ) => {
 
       const p =
         point(
-          i,
+          index,
           radius *
             value /
             100
         );
 
-      ctx.beginPath();
+      context.beginPath();
 
-      ctx.arc(
-        ...p,
+      context.arc(
+        p[0],
+        p[1],
         8,
         0,
-        Math.PI * 2
+        Math.PI *
+          2
       );
 
-      ctx.fillStyle =
-        '#fff';
+      context.fillStyle =
+        '#ffffff';
 
-      ctx.fill();
+      context.fill();
 
-      ctx.strokeStyle =
+      context.strokeStyle =
         '#7257ff';
 
-      ctx.lineWidth = 5;
+      context.lineWidth =
+        5;
 
-      ctx.stroke();
+      context.stroke();
     }
   );
 
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  /*
+    ラベル
+  */
 
   const labels = [
     'テンポ感',
@@ -2011,44 +2724,54 @@ function drawRadar(values) {
   ];
 
   labels.forEach(
-    (label, i) => {
+    (
+      label,
+      index
+    ) => {
 
       const p =
         point(
-          i,
+          index,
           radius + 50
         );
 
-      ctx.fillStyle =
+      context.textAlign =
+        'center';
+
+      context.textBaseline =
+        'middle';
+
+      context.fillStyle =
         '#353148';
 
-      ctx.font =
+      context.font =
         '700 24px -apple-system, sans-serif';
 
-      ctx.fillText(
+      context.fillText(
         label,
         p[0],
         p[1]
       );
 
-      ctx.fillStyle =
+      context.fillStyle =
         '#7257ff';
 
-      ctx.font =
+      context.font =
         '800 22px -apple-system, sans-serif';
 
-      ctx.fillText(
-        values[i],
+      context.fillText(
+        values[index],
         p[0],
-        p[1] + 27
+        p[1] +
+          27
       );
     }
   );
 }
 
-/* =========================
+/* =========================================
    後片付け
-========================= */
+========================================= */
 
 function cleanup() {
 
@@ -2078,21 +2801,38 @@ function cleanup() {
 
     audioCtx
       .close()
-      .catch(() => {});
+      .catch(
+        () => {}
+      );
   }
 
-  stream = null;
-  recorder = null;
-  audioCtx = null;
-  analyser = null;
-  source = null;
+  stream =
+    null;
+
+  recorder =
+    null;
+
+  audioCtx =
+    null;
+
+  analyser =
+    null;
+
+  source =
+    null;
 }
+
+/* =========================================
+   リセット
+========================================= */
 
 function reset() {
 
   cleanup();
 
-  show('intro');
+  show(
+    'intro'
+  );
 
   window.scrollTo({
     top: 0,
@@ -2100,16 +2840,20 @@ function reset() {
   });
 }
 
-/* =========================
+/* =========================================
    Service Worker
-========================= */
+========================================= */
 
 if (
-  'serviceWorker' in navigator &&
-  location.protocol.startsWith('http')
+  'serviceWorker' in
+    navigator &&
+  location.protocol
+    .startsWith('http')
 ) {
 
   navigator.serviceWorker
     .register('sw.js')
-    .catch(() => {});
+    .catch(
+      () => {}
+    );
 }
