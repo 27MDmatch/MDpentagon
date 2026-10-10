@@ -1,4 +1,4 @@
-const CACHE = 'mdpentagon-v3';
+const CACHE = 'mdpentagon-v4';
 
 const ASSETS = [
   './',
