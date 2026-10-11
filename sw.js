@@ -1,21 +1,8 @@
 
-const CACHE = 'mdpentagon-v7';
-
-const ASSETS = [
-  './',
-  'index.html',
-  'style.css',
-  'app.js',
-  'manifest.webmanifest',
-  'icon.svg'
-];
+const CACHE = 'mdpentagon-v8';
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE)
-      .then(cache => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
-  );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
@@ -23,10 +10,7 @@ self.addEventListener('activate', event => {
     caches.keys()
       .then(keys => Promise.all(
         keys
-          .filter(key =>
-            key.startsWith('mdpentagon-') &&
-            key !== CACHE
-          )
+          .filter(key => key.startsWith('mdpentagon-'))
           .map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
@@ -40,16 +24,8 @@ self.addEventListener('fetch', event => {
   ) return;
 
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE)
-            .then(cache => cache.put(event.request, copy))
-            .catch(() => {});
-        }
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+    fetch(event.request).catch(() =>
+      caches.match(event.request)
+    )
   );
 });
