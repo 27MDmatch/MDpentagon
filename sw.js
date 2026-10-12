@@ -1,5 +1,5 @@
 
-const CACHE = 'mdpentagon-v9';
+const CACHE = 'mdpentagon-v10';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
