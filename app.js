@@ -1,5 +1,4 @@
-
-/* MDpentagon - integrated stable edition (2026-10-11) */
+/* MDpentagon - integrated stable edition (2026-10-12) */
 'use strict';
 const $ = id => document.getElementById(id);
 const pages = ['intro','recording','analyzing','result'];
@@ -133,10 +132,55 @@ function drawRadar(values){const canvas=$('radar'),g=canvas.getContext('2d'),cx=
  g.textAlign='center';g.textBaseline='middle';labels.forEach((n,i)=>{const p=point(i,R+45);g.fillStyle='#353148';g.font='bold 21px sans-serif';g.fillText(['テンポ感','規則性','音の強さ','変化','複雑さ'][i],p[0],p[1]);g.fillStyle='#7257ff';g.font='bold 20px sans-serif';g.fillText(values[i]===null?'—':grade(values[i]),p[0],p[1]+26);});}
 function createCard(id,afterSelector){let el=$(id);if(el)return el;el=document.createElement('section');el.id=id;el.className='card';el.style.marginTop='18px';el.style.padding='22px';
  const anchor=document.querySelector(afterSelector);if(anchor)anchor.insertAdjacentElement('afterend',el);else $('result').appendChild(el);return el;}
+
+// Give the radar a repeatable, descriptive name. These are listening suggestions,
+// not diagnoses or claims that a sound will have a guaranteed psychological effect.
+function describeSoundShape(values){
+ const [tempo,regularity,strength,change,complexity]=values;
+ const has=(v)=>v!==null&&Number.isFinite(v);
+ const known=values.filter(has).length;
+ const detail=labels.map((name,i)=>`${name}は${grade(values[i])}`).join('、');
+ if(known<3)return {name:'判定保留',detail,hint:'判定できる音の特徴が少ないため、別の区間でもう一度録音してみてください。'};
+ let name,hint;
+ // More specific combinations are checked before broad patterns.
+ if(has(strength)&&has(change)&&has(complexity)&&strength<40&&change<40&&complexity>=60){
+  name='静かに続く・複雑型';
+  hint='音量の変化が少ない音を聴きたいときや、音の細かな違いに耳を向けたいときの候補です。';
+ }else if(has(regularity)&&has(complexity)&&regularity>=65&&complexity<40){
+  name='シンプル反復型';
+  hint='繰り返しや拍を感じながら聴きたいときの候補です。';
+ }else if(has(change)&&has(complexity)&&change>=65&&complexity>=60){
+  name='展開を楽しむ型';
+  hint='音の移り変わりや細かな違いに注目して聴きたいときの候補です。';
+ }else if(has(tempo)&&has(regularity)&&tempo>=60&&regularity>=60){
+  name='拍が感じやすい型';
+  hint='一定の拍を感じながら聴いたり、軽くリズムを取ったりしたいときの候補です。';
+ }else if(has(strength)&&has(change)&&strength<40&&change<40){
+  name='穏やかに続く型';
+  hint='音量や展開の変化が控えめな音を流したいときの候補です。';
+ }else if(has(strength)&&has(change)&&has(tempo)&&strength>=60&&change>=60&&tempo>=55){
+  name='活発に変化する型';
+  hint='動きのある音を聴きたいときや、活動前に音楽を選ぶときの候補です。';
+ }else if(has(change)&&change>=60){
+  name='変化を楽しむ型';
+  hint='録音区間の中で音の変化を感じたいときの候補です。';
+ }else if(has(regularity)&&regularity>=60){
+  name='拍が安定する型';
+  hint='拍の規則性を感じながら聴きたいときの候補です。';
+ }else{
+  name='複合型';
+  hint='ひとつの特徴に偏らない音のプロフィールです。五角形の各項目を見ながら、今の気分に合うか試してみてください。';
+ }
+ return {name,detail,hint};
+}
 function render(data,audio,rate,id){drawRadar(data.values);
  $('metricList').innerHTML=data.values.map((v,i)=>`<div class="metric"><div class="metric-top"><span>${labels[i]}</span><strong>${grade(v)}</strong></div>${v===null?'':`<div class="track"><div class="fill" style="width:${v}%"></div></div>`}<small>${i===0?(data.tempo.bpm===null?'推定BPM：判定保留':`周期からの推定：約${data.tempo.bpm} BPM（参考）`):['','拍の安定性','録音レベル（音圧計ではありません）','静かな部分と強い部分の差','周波数成分の広がり'][i]}</small></div>`).join('');
  const candidates=data.tempo.candidates.length?data.tempo.candidates.join(' / ')+' BPM':'候補なし';
  $('metricList').insertAdjacentHTML('beforeend',`<div style="margin-top:16px;padding:14px;border-radius:14px;background:#f3efff;line-height:1.7"><strong>🔎 BPM解析メモ</strong><div>候補：${candidates}</div><div>理由：${data.tempo.reason}</div><small>音楽でない周期音にも反応するため参考値です。</small></div>`);
+ // New result card: match the visible radar profile to a descriptive type.
+ const shape=describeSoundShape(data.values);
+ const shapeCard=createCard('soundShapeCard','#result .chart-card');
+ shapeCard.innerHTML=`<h3>この音のかたち</h3><p class="match-title">${shape.name}</p><p>${shape.detail}。</p><h4>聴くときのヒント</h4><p>${shape.hint}</p><small>「複雑さ」は周波数成分の広がりを示す指標で、楽器名や音の重なり数を特定するものではありません。聴き方の提案であり、効果や治療を判定するものではありません。</small>`;
  const [t,r,p,c,x]=data.values;
  // These are descriptive activity suggestions, not proven treatment effects.
  const options=[
@@ -147,7 +191,7 @@ function render(data,audio,rate,id){drawRadar(data.values);
  if(data.silent){$('bestMatch').innerHTML='<p class="match-title">判定保留</p><p>録音信号がほぼ無音です。別の端末で音を流してもう一度試してください。</p>';$('matchList').innerHTML='';}
  else{$('bestMatch').innerHTML=`<p class="match-title">${options[0].icon} ${options[0].name}の候補</p><p>${options[0].reason}</p>`;
  $('matchList').innerHTML=options.map(o=>`<div class="match-row"><span>${o.name}</span><div class="track"><div class="fill" style="width:${cap(o.score)}%"></div></div><strong>${grade(cap(o.score))}</strong></div>`).join('');}
- const q=createCard('recordQualityCard','#result .chart-card');
+ const q=createCard('recordQualityCard','#soundShapeCard');
  q.innerHTML=`<h3>録音の確認</h3><p>録音 ${data.quality.duration} 秒 ／ ${data.quality.label}</p><p style="font-size:13px;color:#77718a">信号レベル RMS ${data.quality.rms} ／ 最大 ${data.quality.peak}</p><button id="playRecorded" class="secondary" type="button">▶ 録音を確認する</button><p style="font-size:12px;color:#77718a">音声は端末内だけで再生します。</p>`;
  if(lastSoundURL)URL.revokeObjectURL(lastSoundURL);lastSoundURL=URL.createObjectURL(wavBlob(audio,rate));
  $('playRecorded').addEventListener('click',()=>{const player=new Audio(lastSoundURL);player.play().catch(()=>alert('再生できませんでした'));});
