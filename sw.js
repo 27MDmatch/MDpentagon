@@ -1,5 +1,5 @@
 
-const CACHE = 'mdpentagon-v8';
+const CACHE = 'mdpentagon-v9';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -24,8 +24,7 @@ self.addEventListener('fetch', event => {
   ) return;
 
   event.respondWith(
-    fetch(event.request).catch(() =>
-      caches.match(event.request)
-    )
+    fetch(event.request)
+      .catch(() => caches.match(event.request))
   );
 });
